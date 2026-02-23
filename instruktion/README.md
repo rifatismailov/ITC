@@ -2,7 +2,7 @@
 
 > Покрокове підключення до VPN та Proxmox для виконання лабораторних робіт.
 
-📄 **[Відкрити повну інструкцію →](./student_guide.html)**
+📄 **[Відкрити повну інструкцію →](https://github.com/rifatismailov/ITC/blob/main/instruktion/student_guide.html)**
 > *(посилання працює після увімкнення GitHub Pages)*
 
 ---
