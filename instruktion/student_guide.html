@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Інструкція для студента</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --red: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(124,58,237,0.15));
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 20px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 900;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+    margin-bottom: 16px;
+  }
+
+  .header p {
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  /* Steps */
+  .phase {
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .phase:nth-child(2) { animation-delay: 0.1s; }
+  .phase:nth-child(3) { animation-delay: 0.2s; }
+
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .phase-number {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .phase-number.vpn { background: linear-gradient(135deg, var(--accent), #0066ff); }
+  .phase-number.proxmox { background: linear-gradient(135deg, var(--green), #059669); }
+
+  .phase-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .phase-subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .card:hover { border-color: var(--accent); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+  }
+
+  .card.green::before { background: linear-gradient(180deg, var(--green), #059669); }
+
+  .step-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .card.green .step-label { color: var(--green); }
+
+  .step-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 12px;
+  }
+
+  .step-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Code block */
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    position: relative;
+    font-size: 13px;
+  }
+
+  .code-block .label {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    border-radius: 100px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  /* Credentials table */
+  .cred-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+
+  .cred-table tr { border-bottom: 1px solid var(--border); }
+  .cred-table tr:last-child { border-bottom: none; }
+
+  .cred-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .cred-table td:first-child {
+    color: var(--muted);
+    width: 130px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .cred-table td:last-child { color: #fff; }
+
+  .highlight {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .highlight.green { color: var(--green); }
+
+  /* Alert */
+  .alert {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+
+  .alert-text {
+    font-size: 12px;
+    color: var(--yellow);
+    line-height: 1.7;
+  }
+
+  .info-alert {
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+  }
+
+  .info-alert .alert-text { color: var(--accent); }
+
+  /* OS tabs */
+  .os-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .os-tab {
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .os-tab:hover, .os-tab.active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Flow */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  .flow-step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: #fff;
+  }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 16px;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 40px 0;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">⚡ Лабораторне середовище</div>
+    <h1>Інструкція для студента</h1>
+    <p>// VPN підключення → Proxmox Web UI //</p>
+  </div>
+
+  <!-- PHASE 1: VPN -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-number vpn">1</div>
+      <div>
+        <div class="phase-title">Підключення до OpenVPN</div>
+        <div class="phase-subtitle">Крок перший · Обов'язковий</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step-label">// Крок 1.1</div>
+      <div class="step-title">Встановіть OpenVPN клієнт</div>
+      <div class="step-desc">Завантажте та встановіть OpenVPN Connect або OpenVPN GUI залежно від вашої ОС:</div>
+      <div class="os-tabs">
+        <div class="os-tab active">Windows</div>
+        <div class="os-tab">macOS</div>
+        <div class="os-tab">Linux</div>
+      </div>
+      <div class="flow">
+        <div class="flow-step">🌐 openvpn.net/client</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Завантажити</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Встановити</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step-label">// Крок 1.2</div>
+      <div class="step-title">Отримайте та імпортуйте сертифікат</div>
+      <div class="step-desc">Ваш особистий сертифікат вже згенеровано. Отримайте файл <span class="highlight">student_##.ovpn</span> у викладача.</div>
+      <div class="code-block">
+        <div class="label">ІМПОРТ ПРОФІЛЮ</div>
+        Windows: відкрийте OpenVPN GUI → правою кнопкою на іконці → Import file → виберіть <span class="highlight">student_##.ovpn</span><br><br>
+        macOS: відкрийте OpenVPN Connect → "+" → Import from file<br><br>
+        Linux: <span class="highlight">sudo openvpn --config student_##.ovpn</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step-label">// Крок 1.3</div>
+      <div class="step-title">Введіть облікові дані VPN</div>
+      <div class="step-desc">Логін та пароль для підключення до VPN-сервера:</div>
+      <div class="code-block">
+        <div class="label">ВАШІ ДАНІ VPN</div>
+        <table class="cred-table">
+          <tr>
+            <td>Логін</td>
+            <td><span class="highlight">student_##</span> <span style="color:var(--muted); font-size:11px;">(замініть ## на ваш номер)</span></td>
+          </tr>
+          <tr>
+            <td>Пароль</td>
+            <td><span class="highlight">student_Hysg&63</span></td>
+          </tr>
+        </table>
+      </div>
+      <div class="alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text">Замініть <strong>##</strong> у логіні на ваш персональний номер студента.<br>Наприклад: student_17, student_05, student_23</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="step-label">// Крок 1.4</div>
+      <div class="step-title">Підключіться до VPN</div>
+      <div class="step-desc">Після імпорту профілю натисніть <span class="highlight">Connect</span>. Успішне підключення — статус змінюється на <span class="highlight" style="color:var(--green)">Connected ✓</span></div>
+      <div class="alert info-alert">
+        <div class="alert-icon">ℹ️</div>
+        <div class="alert-text">Якщо підключення не вдається — перевірте, що файл .ovpn відповідає вашому номеру студента і логін введено правильно.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- PHASE 2: Proxmox -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-number proxmox">2</div>
+      <div>
+        <div class="phase-title">Підключення до Proxmox</div>
+        <div class="phase-subtitle">Крок другий · Після успішного VPN</div>
+      </div>
+    </div>
+
+    <div class="card green">
+      <div class="step-label">// Крок 2.1</div>
+      <div class="step-title">Відкрийте Proxmox Web Interface</div>
+      <div class="step-desc">Після підключення до VPN відкрийте браузер та перейдіть за адресою:</div>
+      <div class="code-block">
+        <div class="label">URL</div>
+        🌐 &nbsp;<span class="highlight green" style="font-size:16px;">https://192.168.88.88:8006</span>
+      </div>
+      <div class="alert">
+        <div class="alert-icon">🔒</div>
+        <div class="alert-text">Браузер може попередити про небезпечне з'єднання (self-signed сертифікат). Натисніть <strong>"Додатково"</strong> → <strong>"Перейти до 192.168.88.88"</strong> — це безпечно в межах лабораторної мережі.</div>
+      </div>
+    </div>
+
+    <div class="card green">
+      <div class="step-label">// Крок 2.2</div>
+      <div class="step-title">Авторизація в Proxmox</div>
+      <div class="step-desc">На сторінці входу введіть ваші особисті облікові дані:</div>
+      <div class="code-block">
+        <div class="label">ДАНІ ДЛЯ ВХОДУ</div>
+        <table class="cred-table">
+          <tr>
+            <td>User name</td>
+            <td><span class="highlight green">student_##</span> <span style="color:var(--muted); font-size:11px;">(ваш номер)</span></td>
+          </tr>
+          <tr>
+            <td>Password</td>
+            <td><span class="highlight green">Student@</span></td>
+          </tr>
+          <tr>
+            <td>Realm</td>
+            <td style="color: var(--muted);">Proxmox VE authentication server</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card green">
+      <div class="step-label">// Крок 2.3</div>
+      <div class="step-title">Ви в системі!</div>
+      <div class="step-desc">Після успішного входу ви побачите дашборд Proxmox VE. Ваші віртуальні машини доступні у лівій панелі навігації.</div>
+      <div class="flow">
+        <div class="flow-step">🔐 Логін</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">📊 Dashboard</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">🖥️ Ваші VM</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Summary -->
+  <div class="card" style="border-color: rgba(0,212,255,0.3); text-align:center; padding: 32px;">
+    <div style="font-family:'Unbounded',sans-serif; font-size:13px; color:var(--accent); margin-bottom:20px; letter-spacing:2px; text-transform:uppercase;">Швидка шпаргалка</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; text-align:left;">
+      <div style="background:var(--surface2); border-radius:12px; padding:16px; border:1px solid var(--border);">
+        <div style="color:var(--accent); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">VPN</div>
+        <div style="font-size:12px; color:var(--muted);">Логін:</div>
+        <div style="font-size:13px; margin-bottom:6px;">student_<span class="highlight">##</span></div>
+        <div style="font-size:12px; color:var(--muted);">Пароль:</div>
+        <div style="font-size:13px;">student_Hysg&63</div>
+      </div>
+      <div style="background:var(--surface2); border-radius:12px; padding:16px; border:1px solid var(--border);">
+        <div style="color:var(--green); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">Proxmox</div>
+        <div style="font-size:12px; color:var(--muted);">URL:</div>
+        <div style="font-size:13px; margin-bottom:6px; color:var(--green);">192.168.88.88:8006</div>
+        <div style="font-size:12px; color:var(--muted);">Логін / Пароль:</div>
+        <div style="font-size:13px;">student_<span class="highlight green">##</span> / Student@</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    // Лабораторне середовище · Не поширювати за межі навчального закладу //
+  </div>
+</div>
+</body>
+</html>
