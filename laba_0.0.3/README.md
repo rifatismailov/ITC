@@ -13,7 +13,7 @@
 
 > ⚠️ **Зверніть увагу:** IP-адреса Ubuntu Server може відрізнятися у вашому середовищі. Уточніть її перед початком роботи.
 
-![Топологія мережі](<image/Знімок екрана 2026-03-08 о 22.47.51.png>)
+![Топологія мережі](<image/image_07.png>)
 
 ---
 
@@ -37,7 +37,7 @@
 
 > ⚠️ **Важливо:** У полі **Redirect Target IP** вкажіть IP-адресу **вашого** Ubuntu Server, а не ту, що зображена на скріншоті нижче.
 
-![Налаштування NAT Port Forward](<image/Знімок екрана 2026-03-08 о 23.13.55.png>)
+![Налаштування NAT Port Forward](<image/image_10.png>)
 
 4. Натисніть **Save**, потім **Apply Changes**
 
@@ -65,7 +65,7 @@ sudo apt update && sudo apt install openssh-server -y
 
 > ⚠️ **Можлива помилка під час встановлення:** Якщо під час виконання команди виникне помилка (як на зображенні нижче), перезавантажте Ubuntu командою `reboot` та спробуйте встановлення повторно.
 
-![Помилка встановлення SSH](<image/error_ssh.png>)
+![Помилка встановлення SSH](<image/image_03.png>)
 
 **Якщо SSH встановлений, але не активний** — запустіть та додайте до автозапуску:
 
@@ -80,7 +80,7 @@ sudo systemctl enable ssh
 ss -tlnp | grep 22
 ```
 
-![Перевірка стану SSH](<image/Знімок екрана 2026-03-08 о 22.40.39.png>)
+![Перевірка стану SSH](<image/image_05.png>)
 
 ---
 
@@ -98,7 +98,7 @@ ssh -p 2222 student@192.168.88.XXX
 
 > 💡 Використання нестандартного порту `2222` замість стандартного `22` зменшує кількість автоматизованих атак на SSH.
 
-![Підключення через SSH](<image/Знімок екрана 2026-03-08 о 22.42.32.png>)
+![Підключення через SSH](<image/image_06.png>)
 
 ---
 
@@ -121,7 +121,7 @@ sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io -y
 ```
 
-![Встановлення Docker](<image/isntallDocker.png>)
+![Встановлення Docker](<image/image_04.png>)
 
 ### 4.2 Запуск Portainer Community Edition
 
@@ -176,9 +176,9 @@ To                         Action      From
 9443/tcp                   ALLOW IN    192.168.1.1
 ```
 
-![Правило UFW для SSH (порт 22)](<image/Allow_22.png>)
+![Правило UFW для SSH (порт 22)](<image/image_01.png>)
 
-![Правило UFW для Portainer (порт 9443)](<image/Allow_9443.png>)
+![Правило UFW для Portainer (порт 9443)](<image/image_02.png>)
 
 ---
 
@@ -198,7 +198,7 @@ To                         Action      From
 | Redirect target port | `9443` |
 | Description | `Portainer Web UI` |
 
-![Налаштування Port Forwarding для Portainer](<image/Знімок екрана 2026-03-08 о 23.59.00.png>)
+![Налаштування Port Forwarding для Portainer](<image/image_11.png>)
 
 4. Натисніть **Save**, потім **Apply Changes**
 
@@ -211,13 +211,13 @@ To                         Action      From
 - **Login:** `admin`
 - **Password:** `PortainerStudent@`
 
-![Створення користувача Portainer](<image/Знімок екрана 2026-03-08 о 23.02.17.png>)
+![Створення користувача Portainer](<image/image_09.png>)
 
 ### Можливі проблеми з доступом
 
 Якщо після входу виникає помилка (як на зображенні нижче) — просто перезапустіть контейнер:
 
-![Помилка доступу до Portainer](<image/Знімок екрана 2026-03-08 о 22.59.52.png>)
+![Помилка доступу до Portainer](<image/image_08.png>)
 
 ```bash
 sudo docker restart portainer
