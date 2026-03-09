@@ -153,10 +153,10 @@ docker ps
 
 ```bash
 # 1. Дозволити SSH тільки з IP шлюзу OPNsense
-sudo ufw allow from 192.168.1.1 to any port 22 proto tcp
+sudo ufw allow 22/tcp
 
 # 2. Дозволити доступ до Portainer тільки з IP шлюзу OPNsense
-sudo ufw allow from 192.168.1.1 to any port 9443 proto tcp
+sudo ufw allow 9443/tcp
 
 # 3. Увімкнути UFW
 sudo ufw enable
