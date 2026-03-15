@@ -1,251 +1,349 @@
-# 🔧 Лабораторна робота: Віддалений доступ, Docker та Portainer за OPNsense
+# 🔐 Лабораторна робота №2
 
-## Топологія мережі
-
-```
-[Зовнішня мережа] → [OPNsense WAN] → [OPNsense LAN 192.168.1.1] → [Ubuntu Server 192.168.1.XXX]
-```
-
-| Пристрій | Роль | IP-адреса |
-|---|---|---|
-| OPNsense | Шлюз / Фаєрвол | LAN: `192.168.1.1` |
-| Ubuntu Server | Сервер додатків | `192.168.1.XXX` |
-
-> ⚠️ **Зверніть увагу:** IP-адреса Ubuntu Server може відрізнятися у вашому середовищі. Уточніть її перед початком роботи.
-
-![Топологія мережі](<image/image_07.png>)
+## Дискреційний контроль доступу (DAC) у Linux
 
 ---
 
-## Крок 1. Налаштування Port Forwarding для SSH на OPNsense
+# 📚 Мета роботи
 
-### 1.1 Створення правила NAT Port Forward
+Навчитись керувати доступом до файлів та директорій у Linux за допомогою:
 
-1. Перейдіть у **Firewall → NAT → Destination NAT (Port Forward)**
-2. Натисніть кнопку **+ Add**
-3. Заповніть параметри:
+* моделі **DAC (Discretionary Access Control)**
+* стандартних прав **Owner / Group / Others**
+* розширених **POSIX ACL**
+* спеціальних бітів файлової системи
 
-| Параметр | Значення |
-|---|---|
-| Interface | `WAN` |
-| Protocol | `TCP` |
-| Destination | `WAN address` |
-| Destination port range | `2222` |
-| Redirect target IP | `192.168.1.XXX` |
-| Redirect target port | `22` |
-| Description | `SSH to Ubuntu` |
+Також дослідити принципи:
 
-> ⚠️ **Важливо:** У полі **Redirect Target IP** вкажіть IP-адресу **вашого** Ubuntu Server, а не ту, що зображена на скріншоті нижче.
-
-![Налаштування NAT Port Forward](<image/image_10.png>)
-
-4. Натисніть **Save**, потім **Apply Changes**
-
-> ℹ️ OPNsense автоматично створить відповідне дозвільне правило у **Firewall → Rules → WAN**. Перевірте його наявність після збереження.
+* **Least Privilege** — мінімальні привілеї
+* **Separation of Duties** — розподіл обов'язків
 
 ---
 
-## Крок 2. Перевірка та запуск SSH на Ubuntu
+# 🖥 Підготовка середовища
 
-Підключіться до Ubuntu через консоль і виконайте перевірку статусу SSH:
+Лабораторна виконується на **будь-якій Linux системі**.
 
-```bash
-# Перевірити статус SSH
-sudo systemctl status ssh
-```
-
-**Якщо SSH активний** — одразу переходьте до Кроку 3.
-
-**Якщо SSH не встановлений** — виконайте встановлення:
+Потрібно встановити пакет для роботи з ACL.
 
 ```bash
-# Встановити SSH
-sudo apt update && sudo apt install openssh-server -y
-```
-
-> ⚠️ **Можлива помилка під час встановлення:** Якщо під час виконання команди виникне помилка (як на зображенні нижче), перезавантажте Ubuntu командою `reboot` та спробуйте встановлення повторно.
-
-![Помилка встановлення SSH](<image/image_03.png>)
-
-**Якщо SSH встановлений, але не активний** — запустіть та додайте до автозапуску:
-
-```bash
-# Запустити сервіс
-sudo systemctl start ssh
-
-# Додати до автозапуску
-sudo systemctl enable ssh
-
-# Перевірити що SSH слухає на порту 22
-ss -tlnp | grep 22
-```
-
-![Перевірка стану SSH](<image/image_05.png>)
-
----
-
-## Крок 3. Підключення через SSH з зовнішньої мережі
-
-```bash
-# Формат команди
-ssh -p <зовнішній_порт> <користувач>@<WAN_IP_OPNsense>
-
-# Приклад
-ssh -p 2222 student@192.168.88.XXX
-```
-
-> ℹ️ `192.168.88.XXX` — це IP-адреса **WAN-порту вашого OPNsense**, за якою ви підключаєтесь до веб-інтерфейсу OPNsense.
-
-> 💡 Використання нестандартного порту `2222` замість стандартного `22` зменшує кількість автоматизованих атак на SSH.
-
-![Підключення через SSH](<image/image_06.png>)
-
----
-
-## Крок 4. Встановлення Docker та Portainer
-
-### 4.1 Встановлення Docker
-
-```bash
-# Встановлюємо залежності
 sudo apt update
-sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
-
-# Додаємо офіційний GPG-ключ Docker (старий метод для Ubuntu 18.04)
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-# Додаємо репозиторій Docker для Ubuntu 18.04 (bionic)
-sudo add-apt-repository \
-  "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-
-# Оновлюємо список пакетів та встановлюємо Docker
-sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io -y
-
-# Перевірити встановлення
-docker --version
+sudo apt install acl
 ```
 
-![Встановлення Docker](<image/image_04.png>)
+### Що це за пакет
 
-### 4.2 Запуск Portainer Community Edition
+| Пакет | Призначення                                 |
+| ----- | ------------------------------------------- |
+| acl   | підтримка розширених прав доступу POSIX ACL |
+
+---
+
+# 👥 Завдання 1 — Створення користувачів та груп
+
+У моделі **DAC** адміністратор створює користувачів та групи, а власники файлів можуть самостійно керувати доступом.
+
+---
+
+## Створення груп
 
 ```bash
-# Створити persistent volume для збереження даних Portainer
-docker volume create portainer_data
-
-# Запустити контейнер Portainer
-sudo docker run -d \
-  -p 8000:8000 \
-  -p 9443:9443 \
-  --name portainer \
-  --restart=always \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v portainer_data:/data \
-  portainer/portainer-ce:latest
-
-# Перевірити що контейнер запущено
-docker ps
+sudo groupadd developers
+sudo groupadd managers
 ```
-
-> 🌐 Portainer буде доступний локально за адресою: `https://192.168.1.XXX:9443`, де `192.168.1.XXX` — IP-адреса вашого Ubuntu Server.
 
 ---
 
-## Крок 5. Налаштування UFW на Ubuntu
-
-> ⚠️ **Обов'язково** налаштуйте правила для SSH **до** увімкнення UFW, інакше втратите доступ до сервера!
+## Створення користувачів
 
 ```bash
-# 1. Дозволити SSH тільки з IP шлюзу OPNsense
-sudo ufw allow 22/tcp
+# Alice — розробник
+sudo useradd -m -s /bin/bash alice
+sudo usermod -aG developers alice
 
-# 2. Дозволити доступ до Portainer тільки з IP шлюзу OPNsense
-sudo ufw allow 9443/tcp
+# Bob — менеджер
+sudo useradd -m -s /bin/bash bob
+sudo usermod -aG managers bob
 
-# 3. Увімкнути UFW
-sudo ufw enable
-
-# 4. Перевірити правила
-sudo ufw status verbose
+# Charlie — стажер
+sudo useradd -m -s /bin/bash charlie
 ```
-
-Очікуваний вивід:
-
-```
-Status: active
-
-To                         Action      From
---                         ------      ----
-22/tcp                     ALLOW IN    192.168.1.1
-9443/tcp                   ALLOW IN    192.168.1.1
-```
-
-![Правило UFW для SSH (порт 22)](<image/image_01.png>)
-
-![Правило UFW для Portainer (порт 9443)](<image/image_02.png>)
 
 ---
 
-## Крок 6. Port Forwarding для Portainer на OPNsense
+### 📖 Пояснення
 
-1. Перейдіть у **Firewall → NAT → Destination NAT**
-2. Натисніть **+ Add**
-3. Заповніть параметри:
+| Команда     | Опис                       |
+| ----------- | -------------------------- |
+| useradd     | створює користувача        |
+| -m          | створює домашню директорію |
+| -s          | задає shell                |
+| usermod -aG | додає користувача до групи |
 
-| Параметр | Значення |
-|---|---|
-| Interface | `WAN` |
-| Protocol | `TCP` |
-| Destination | `WAN address` |
-| Destination port range | `9443` |
-| Redirect target IP | `192.168.1.XXX` |
-| Redirect target port | `9443` |
-| Description | `Portainer Web UI` |
+---
 
-![Налаштування Port Forwarding для Portainer](<image/image_11.png>)
+# 📁 Завдання 2 — Базовий DAC (Owner / Group / Others)
 
-4. Натисніть **Save**, потім **Apply Changes**
+Сценарій:
 
-> 🌐 Після налаштування Portainer буде доступний ззовні за адресою: `https://<WAN_IP>:9443`
+Розробники мають **спільну папку для коду**, а менеджери не повинні мати доступ до неї.
 
-### Перший вхід до Portainer
+---
 
-Під час першого входу вам буде запропоновано створити адміністратора. Введіть логін та пароль двічі:
-
-- **Login:** `admin`
-- **Password:** `PortainerStudent@`
-
-![Створення користувача Portainer](<image/image_09.png>)
-
-### Можливі проблеми з доступом
-
-Якщо після входу виникає помилка (як на зображенні нижче) — просто перезапустіть контейнер:
-
-![Помилка доступу до Portainer](<image/image_08.png>)
+## Створення директорії
 
 ```bash
-sudo docker restart portainer
+sudo mkdir -p /projects/backend
 ```
 
 ---
 
-## ✅ Перевірка після налаштування
+## Зміна власника та групи
 
-- [ ] SSH підключення працює: `ssh -p 2222 student@<WAN_IP>`
-- [ ] Portainer відкривається у браузері: `https://<WAN_IP>:9443`
-- [ ] UFW активний і показує коректні правила: `sudo ufw status verbose`
-- [ ] Docker контейнер запущено: `docker ps`
+```bash
+sudo chown alice:developers /projects/backend
+```
 
 ---
 
-## 📋 Підсумок кроків
+## Встановлення прав доступу
 
-| # | Дія | Де |
-|---|---|---|
-| 1 | Port Forward SSH (`2222` → `22`) | OPNsense → Firewall → NAT |
-| 2 | Перевірка та запуск SSH | Ubuntu Terminal |
-| 3 | Підключення по SSH | Зовнішня машина |
-| 4 | Встановлення Docker + Portainer | Ubuntu Terminal |
-| 5 | Налаштування UFW | Ubuntu Terminal |
-| 6 | Port Forward Portainer (`9443` → `9443`) | OPNsense → Firewall → NAT |
+```bash
+sudo chmod 750 /projects/backend
+```
+
+---
+
+### Розшифровка прав
+
+| Користувач         | Права |
+| ------------------ | ----- |
+| Owner (alice)      | rwx   |
+| Group (developers) | r-x   |
+| Others             | ---   |
+
+---
+
+## Перевірка доступу
+
+### Доступ для Alice
+
+```bash
+su - alice -c "ls /projects/backend"
+```
+
+Результат:
+
+```text
+Success
+```
+
+---
+
+### Доступ для Bob
+
+```bash
+su - bob -c "ls /projects/backend"
+```
+
+Результат:
+
+```text
+Permission denied
+```
+
+---
+
+# 🧩 Завдання 3 — Розширений контроль доступу (POSIX ACL)
+
+Іноді стандартних прав **rwx** недостатньо.
+
+Сценарій:
+
+Менеджеру **Bob** потрібно надати **доступ тільки на читання** до одного файлу.
+
+---
+
+## Створення файлу
+
+```bash
+su - alice -c "echo 'Secret Code' > /projects/backend/api.py"
+```
+
+---
+
+## Перегляд ACL
+
+```bash
+getfacl /projects/backend/api.py
+```
+
+---
+
+## Додавання доступу для Bob
+
+```bash
+sudo setfacl -m u:bob:r /projects/backend/api.py
+```
+
+---
+
+## Перевірка
+
+Bob може прочитати файл:
+
+```bash
+su - bob -c "cat /projects/backend/api.py"
+```
+
+Bob **не може**:
+
+```bash
+su - bob -c "nano /projects/backend/api.py"
+su - bob -c "touch /projects/backend/newfile.py"
+```
+
+---
+
+# 📌 Завдання 4 — Sticky Bit
+
+Sticky Bit використовується для спільних директорій.
+
+---
+
+## Створення спільної папки
+
+```bash
+sudo mkdir /projects/tmp_share
+sudo chmod 777 /projects/tmp_share
+```
+
+---
+
+## Встановлення Sticky Bit
+
+```bash
+sudo chmod +t /projects/tmp_share
+```
+
+---
+
+## Як це працює
+
+У такій директорії:
+
+* файли можуть створювати **всі користувачі**
+* видаляти файл може **лише його власник**
+
+---
+
+## Практика
+
+### Створення файлу
+
+```bash
+su - alice
+touch /projects/tmp_share/test.txt
+```
+
+---
+
+### Спроба видалити файл
+
+```bash
+su - bob
+rm /projects/tmp_share/test.txt
+```
+
+Результат:
+
+```text
+Operation not permitted
+```
+
+---
+
+# 📖 Теорія
+
+## Discretionary Access Control (DAC)
+
+DAC — модель контролю доступу, у якій **власник ресурсу сам визначає**, хто має доступ до файлу або директорії.
+
+Це стандартна модель безпеки у Linux.
+
+---
+
+## Least Privilege
+
+Користувач повинен мати **мінімально необхідні права**.
+
+Наприклад:
+
+```bash
+chmod 600 passwords.txt
+```
+
+---
+
+### Значення прав
+
+| Owner | Group | Others |
+| ----- | ----- | ------ |
+| rw    | ---   | ---    |
+
+---
+
+## Separation of Duties
+
+Безпека підвищується, коли ролі розділені.
+
+| Користувач | Роль      |
+| ---------- | --------- |
+| Alice      | Developer |
+| Bob        | Manager   |
+| Charlie    | Intern    |
+
+Якщо один обліковий запис буде зламаний — система залишиться частково захищеною.
+
+---
+
+# 🧪 Контрольні питання
+
+1️⃣ Що таке **DAC**?
+Чому ця модель називається *дискреційною*?
+
+---
+
+2️⃣ Принцип **Least Privilege**
+
+Які права доступу найбільш безпечні для файлу з паролями?
+
+---
+
+3️⃣ **ACL vs chmod**
+
+У яких випадках стандартних прав `rwx` недостатньо?
+
+---
+
+4️⃣ **Separation of Duties**
+
+Як розділення користувачів `alice` та `bob` допомагає безпеці системи?
+
+---
+
+# ✅ Результат лабораторної
+
+Було досліджено:
+
+* модель **DAC**
+* права доступу **Owner / Group / Others**
+* розширені **POSIX ACL**
+* механізм **Sticky Bit**
+
+---
+
+# 🎉 Висновок
+
+Було досліджено механізми контролю доступу Linux, які дозволяють гнучко керувати доступом до файлів та директорій.
+Ці механізми є фундаментальною частиною **безпеки операційних систем Linux/Unix**.

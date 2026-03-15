@@ -1,251 +1,308 @@
-# 🔧 Лабораторна робота: Віддалений доступ, Docker та Portainer за OPNsense
+# 🔐 Лабораторна робота
 
-## Топологія мережі
-
-```
-[Зовнішня мережа] → [OPNsense WAN] → [OPNsense LAN 192.168.1.1] → [Ubuntu Server 192.168.1.XXX]
-```
-
-| Пристрій | Роль | IP-адреса |
-|---|---|---|
-| OPNsense | Шлюз / Фаєрвол | LAN: `192.168.1.1` |
-| Ubuntu Server | Сервер додатків | `192.168.1.XXX` |
-
-> ⚠️ **Зверніть увагу:** IP-адреса Ubuntu Server може відрізнятися у вашому середовищі. Уточніть її перед початком роботи.
-
-![Топологія мережі](<image/image_07.png>)
+## Контроль доступу та Inter-VLAN маршрутизація в DMZ
 
 ---
 
-## Крок 1. Налаштування Port Forwarding для SSH на OPNsense
+# 📚 Мета роботи
 
-### 1.1 Створення правила NAT Port Forward
+Навчитись:
 
-1. Перейдіть у **Firewall → NAT → Destination NAT (Port Forward)**
-2. Натисніть кнопку **+ Add**
-3. Заповніть параметри:
-
-| Параметр | Значення |
-|---|---|
-| Interface | `WAN` |
-| Protocol | `TCP` |
-| Destination | `WAN address` |
-| Destination port range | `2222` |
-| Redirect target IP | `192.168.1.XXX` |
-| Redirect target port | `22` |
-| Description | `SSH to Ubuntu` |
-
-> ⚠️ **Важливо:** У полі **Redirect Target IP** вкажіть IP-адресу **вашого** Ubuntu Server, а не ту, що зображена на скріншоті нижче.
-
-![Налаштування NAT Port Forward](<image/image_10.png>)
-
-4. Натисніть **Save**, потім **Apply Changes**
-
-> ℹ️ OPNsense автоматично створить відповідне дозвільне правило у **Firewall → Rules → WAN**. Перевірте його наявність після збереження.
+* сегментувати мережу за допомогою **VLAN**
+* налаштовувати **Inter-VLAN маршрутизацію**
+* використовувати **Cisco IR800** як gateway
+* впроваджувати політики безпеки за допомогою **ACL (Access Control Lists)**
 
 ---
 
-## Крок 2. Перевірка та запуск SSH на Ubuntu
+# 🌐 Топологія мережі
 
-Підключіться до Ubuntu через консоль і виконайте перевірку статусу SSH:
-
-```bash
-# Перевірити статус SSH
-sudo systemctl status ssh
-```
-
-**Якщо SSH активний** — одразу переходьте до Кроку 3.
-
-**Якщо SSH не встановлений** — виконайте встановлення:
-
-```bash
-# Встановити SSH
-sudo apt update && sudo apt install openssh-server -y
-```
-
-> ⚠️ **Можлива помилка під час встановлення:** Якщо під час виконання команди виникне помилка (як на зображенні нижче), перезавантажте Ubuntu командою `reboot` та спробуйте встановлення повторно.
-
-![Помилка встановлення SSH](<image/image_03.png>)
-
-**Якщо SSH встановлений, але не активний** — запустіть та додайте до автозапуску:
-
-```bash
-# Запустити сервіс
-sudo systemctl start ssh
-
-# Додати до автозапуску
-sudo systemctl enable ssh
-
-# Перевірити що SSH слухає на порту 22
-ss -tlnp | grep 22
-```
-
-![Перевірка стану SSH](<image/image_05.png>)
+| VLAN    | Призначення         | Мережа          |
+| ------- | ------------------- | --------------- |
+| VLAN 10 | Мережа персоналу    | 192.168.10.0/24 |
+| VLAN 20 | Мережа менеджменту  | 192.168.20.0/24 |
+| VLAN 30 | DMZ (серверна зона) | 192.168.30.0/24 |
 
 ---
 
-## Крок 3. Підключення через SSH з зовнішньої мережі
+# ⚙️ Крок 1 — Налаштування Switch2 (Access Switch)
 
-```bash
-# Формат команди
-ssh -p <зовнішній_порт> <користувач>@<WAN_IP_OPNsense>
+Необхідно створити VLAN та підготувати trunk-з'єднання до роутера.
 
-# Приклад
-ssh -p 2222 student@192.168.88.XXX
+```cisco
+Switch2(config)# vlan 30
+Switch2(config-vlan)# name DMZ_ZONE
+Switch2(config-vlan)# exit
+
+! Налаштування порту для сервера
+Switch2(config)# interface fastEthernet 0/3
+Switch2(config-if)# switchport mode access
+Switch2(config-if)# switchport access vlan 30
+Switch2(config-if)# no shutdown
+
+! Trunk до роутера
+Switch2(config)# interface fastEthernet 0/23
+Switch2(config-if)# switchport mode trunk
+Switch2(config-if)# switchport trunk allowed vlan 10,20,30
 ```
 
-> ℹ️ `192.168.88.XXX` — це IP-адреса **WAN-порту вашого OPNsense**, за якою ви підключаєтесь до веб-інтерфейсу OPNsense.
+### 📖 Пояснення
 
-> 💡 Використання нестандартного порту `2222` замість стандартного `22` зменшує кількість автоматизованих атак на SSH.
+**vlan 30**
 
-![Підключення через SSH](<image/image_06.png>)
+Створюється окремий широкомовний домен.
+
+**switchport mode access**
+
+Порт використовується для кінцевого пристрою.
+
+**switchport trunk allowed vlan**
+
+Через trunk передаються лише дозволені VLAN.
 
 ---
 
-## Крок 4. Встановлення Docker та Portainer
+# 💻 Крок 2 — Налаштування кінцевих пристроїв
 
-### 4.1 Встановлення Docker
+## Сервер (DMZ)
 
-```bash
-# Встановлюємо залежності
-sudo apt update
-sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
-
-# Додаємо офіційний GPG-ключ Docker (старий метод для Ubuntu 18.04)
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-
-# Додаємо репозиторій Docker для Ubuntu 18.04 (bionic)
-sudo add-apt-repository \
-  "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
-
-# Оновлюємо список пакетів та встановлюємо Docker
-sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io -y
-
-# Перевірити встановлення
-docker --version
-```
-
-![Встановлення Docker](<image/image_04.png>)
-
-### 4.2 Запуск Portainer Community Edition
-
-```bash
-# Створити persistent volume для збереження даних Portainer
-docker volume create portainer_data
-
-# Запустити контейнер Portainer
-sudo docker run -d \
-  -p 8000:8000 \
-  -p 9443:9443 \
-  --name portainer \
-  --restart=always \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v portainer_data:/data \
-  portainer/portainer-ce:latest
-
-# Перевірити що контейнер запущено
-docker ps
-```
-
-> 🌐 Portainer буде доступний локально за адресою: `https://192.168.1.XXX:9443`, де `192.168.1.XXX` — IP-адреса вашого Ubuntu Server.
+| Параметр        | Значення      |
+| --------------- | ------------- |
+| IP Address      | 192.168.30.10 |
+| Subnet Mask     | 255.255.255.0 |
+| Default Gateway | 192.168.30.1  |
 
 ---
 
-## Крок 5. Налаштування UFW на Ubuntu
+## ПК VLAN 10
 
-> ⚠️ **Обов'язково** налаштуйте правила для SSH **до** увімкнення UFW, інакше втратите доступ до сервера!
-
-```bash
-# 1. Дозволити SSH тільки з IP шлюзу OPNsense
-sudo ufw allow 22/tcp
-
-# 2. Дозволити доступ до Portainer тільки з IP шлюзу OPNsense
-sudo ufw allow 9443/tcp
-
-# 3. Увімкнути UFW
-sudo ufw enable
-
-# 4. Перевірити правила
-sudo ufw status verbose
-```
-
-Очікуваний вивід:
-
-```
-Status: active
-
-To                         Action      From
---                         ------      ----
-22/tcp                     ALLOW IN    192.168.1.1
-9443/tcp                   ALLOW IN    192.168.1.1
-```
-
-![Правило UFW для SSH (порт 22)](<image/image_01.png>)
-
-![Правило UFW для Portainer (порт 9443)](<image/image_02.png>)
+| Параметр    | Значення      |
+| ----------- | ------------- |
+| IP Address  | 192.168.10.x  |
+| Subnet Mask | 255.255.255.0 |
+| Gateway     | 192.168.10.1  |
 
 ---
 
-## Крок 6. Port Forwarding для Portainer на OPNsense
+## ПК VLAN 20
 
-1. Перейдіть у **Firewall → NAT → Destination NAT**
-2. Натисніть **+ Add**
-3. Заповніть параметри:
+| Параметр    | Значення      |
+| ----------- | ------------- |
+| IP Address  | 192.168.20.x  |
+| Subnet Mask | 255.255.255.0 |
+| Gateway     | 192.168.20.1  |
 
-| Параметр | Значення |
-|---|---|
-| Interface | `WAN` |
-| Protocol | `TCP` |
-| Destination | `WAN address` |
-| Destination port range | `9443` |
-| Redirect target IP | `192.168.1.XXX` |
-| Redirect target port | `9443` |
-| Description | `Portainer Web UI` |
+---
 
-![Налаштування Port Forwarding для Portainer](<image/image_11.png>)
+# 🛠 Крок 3 — Налаштування Router IR800
 
-4. Натисніть **Save**, потім **Apply Changes**
+IR800 використовує **SVI (Switch Virtual Interface)**.
 
-> 🌐 Після налаштування Portainer буде доступний ззовні за адресою: `https://<WAN_IP>:9443`
+### Trunk інтерфейс
 
-### Перший вхід до Portainer
-
-Під час першого входу вам буде запропоновано створити адміністратора. Введіть логін та пароль двічі:
-
-- **Login:** `admin`
-- **Password:** `PortainerStudent@`
-
-![Створення користувача Portainer](<image/image_09.png>)
-
-### Можливі проблеми з доступом
-
-Якщо після входу виникає помилка (як на зображенні нижче) — просто перезапустіть контейнер:
-
-![Помилка доступу до Portainer](<image/image_08.png>)
-
-```bash
-sudo docker restart portainer
+```cisco
+Router1(config)# interface gigabitEthernet 1
+Router1(config-if)# switchport mode trunk
+Router1(config-if)# switchport trunk allowed vlan 10,20,30
+Router1(config-if)# no shutdown
 ```
 
 ---
 
-## ✅ Перевірка після налаштування
+### Gateway для VLAN
 
-- [ ] SSH підключення працює: `ssh -p 2222 student@<WAN_IP>`
-- [ ] Portainer відкривається у браузері: `https://<WAN_IP>:9443`
-- [ ] UFW активний і показує коректні правила: `sudo ufw status verbose`
-- [ ] Docker контейнер запущено: `docker ps`
+```cisco
+Router1(config)# interface vlan 10
+Router1(config-if)# ip address 192.168.10.1 255.255.255.0
+Router1(config-if)# no shutdown
+
+Router1(config)# interface vlan 20
+Router1(config-if)# ip address 192.168.20.1 255.255.255.0
+Router1(config-if)# no shutdown
+
+Router1(config)# interface vlan 30
+Router1(config-if)# ip address 192.168.30.1 255.255.255.0
+Router1(config-if)# no shutdown
+```
 
 ---
 
-## 📋 Підсумок кроків
+### Увімкнення маршрутизації
 
-| # | Дія | Де |
-|---|---|---|
-| 1 | Port Forward SSH (`2222` → `22`) | OPNsense → Firewall → NAT |
-| 2 | Перевірка та запуск SSH | Ubuntu Terminal |
-| 3 | Підключення по SSH | Зовнішня машина |
-| 4 | Встановлення Docker + Portainer | Ubuntu Terminal |
-| 5 | Налаштування UFW | Ubuntu Terminal |
-| 6 | Port Forward Portainer (`9443` → `9443`) | OPNsense → Firewall → NAT |
+```cisco
+Router1(config)# ip routing
+```
+
+---
+
+# 🛡 Крок 4 — Контроль доступу (ACL)
+
+Реалізація принципу **Least Privilege**.
+
+```cisco
+Router1(config)# ip access-list extended DMZ_POLICY
+
+permit icmp 192.168.30.0 0.0.0.255 any echo-reply
+
+permit tcp 192.168.30.0 0.0.0.255 any established
+
+deny ip 192.168.30.0 0.0.0.255 192.168.10.0 0.0.0.255
+
+deny ip 192.168.30.0 0.0.0.255 192.168.20.0 0.0.0.255
+
+permit ip any any
+```
+
+---
+
+### Прив'язка ACL
+
+```cisco
+Router1(config)# interface vlan 30
+Router1(config-if)# ip access-group DMZ_POLICY in
+```
+
+---
+
+# 📖 Пояснення правил ACL
+
+### 1️⃣ ICMP Echo Reply
+
+```
+permit icmp ... echo-reply
+```
+
+Дозволяє серверу **відповідати на ping**.
+
+---
+
+### 2️⃣ TCP Established
+
+```
+permit tcp ... established
+```
+
+Дозволяє тільки **відповідь сервера на існуюче з'єднання**.
+
+---
+
+### 3️⃣ Заборона доступу до внутрішніх мереж
+
+```
+deny ip DMZ -> VLAN10
+deny ip DMZ -> VLAN20
+```
+
+Сервер **не може ініціювати з'єднання у внутрішню мережу**.
+
+---
+
+### 4️⃣ Default allow
+
+```
+permit ip any any
+```
+
+Фінальне правило щоб не блокувати інший трафік.
+
+---
+
+# 🧠 Теорія
+
+## Access Control
+
+Ця лабораторна демонструє кілька моделей контролю доступу.
+
+### DAC (Discretionary Access Control)
+
+Адміністратор визначає політику доступу.
+
+---
+
+### RBAC (Role Based Access Control)
+
+Сегментація за ролями:
+
+* Staff
+* Management
+* DMZ
+
+---
+
+### Least Privilege
+
+Сервер має **мінімальні дозволи** для роботи.
+
+---
+
+# 🧪 Завдання для перевірки
+
+Перевірити роботу політик:
+
+### ✔ Ping з ПК → сервер
+
+Повинен **працювати**.
+
+---
+
+### ❌ Ping з сервера → ПК
+
+Повинен **не працювати**.
+
+---
+
+### ❓ Питання
+
+Чому правило
+
+```
+permit ip any any
+```
+
+стоїть **останнім у списку ACL**?
+
+---
+
+# 🚀 Додаткові завдання
+
+### 1️⃣ Time-based ACL
+
+Дозволити доступ до сервера лише в робочі години.
+
+---
+
+### 2️⃣ Logging атак
+
+```cisco
+deny ip 192.168.30.0 0.0.0.255 192.168.10.0 0.0.0.255 log
+```
+
+Router буде записувати спроби доступу.
+
+---
+
+### 3️⃣ Anti-spoofing ACL
+
+Дозволяти пакети у VLAN 10 тільки з:
+
+```
+192.168.10.0/24
+```
+
+---
+
+# ✅ Результат
+
+Було реалізовано:
+
+* VLAN сегментацію
+* Inter-VLAN routing
+* DMZ зону
+* ACL політику доступу
+* базову модель мережевої безпеки
+
+---
+
+# 🎉 Висновок
+
+Було створено **захищену DMZ-зону на обладнанні Cisco**, що дозволяє контролювати доступ між сегментами мережі та мінімізувати ризики несанкціонованого доступу.
