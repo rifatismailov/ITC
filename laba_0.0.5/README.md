@@ -1,4 +1,3 @@
-Ось готовий файл `README.md`, який ти можеш використовувати для своєї лабораторної роботи. Він структурований, зрозумілий і містить усі необхідні команди та параметри.
 
 ---
 
@@ -87,7 +86,7 @@ networks:
 
 ---
 ![alt text](<image/image1.png>)
-потім натискаєте deploy the stak
+потім натискаєте deploy the stack
 ![alt text](<image/image2.png>)
 ![alt text](<image/image3.png>)
 ![alt text](<image/image4.png>)
