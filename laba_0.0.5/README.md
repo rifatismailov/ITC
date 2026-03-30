@@ -103,6 +103,7 @@ networks:
 | **Redirect Target IP** | 10.10.10.50 |
 | **Redirect Target Port** | 80 |
 | **Filter Rule Association** | Add associated filter rule |
+| **Firewall rule**| pass|
 
 ---
 
